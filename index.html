@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Recommendation App</title>
+    <!-- We'll load all our dependencies here to make sure they're ready -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the checkbox-label to give it a button-like appearance */
+        .checkbox-label {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* Style for when the checkbox is checked */
+        input[type="checkbox"]:checked + .checkbox-label {
+            background-color: #3b82f6; /* A shade of blue */
+            color: white;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+            transform: scale(1.05);
+        }
+
+        /* Simple animation for the recommendation box */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <div id="root"></div>
+
+    <script>
+        // Use a simple load event listener to ensure all external scripts are loaded
+        window.addEventListener('load', () => {
+            const { createElement, useState } = React;
+            const { createRoot } = ReactDOM;
+
+            // This is the main application component using React hooks
+            const App = () => {
+                // State to hold the selected options
+                const [selectedOptions, setSelectedOptions] = useState({
+                    'Technical Skills': [],
+                    'Soft Skills': [],
+                    'Domain Interests': [],
+                    'Motivations': [],
+                });
+                // State to store the recommendation result
+                const [recommendation, setRecommendation] = useState(null);
+                // State for the warning message
+                const [showWarning, setShowWarning] = useState(false);
+
+                // Hardcoded data for careers and their associated traits
+                const careerData = [
+                    { career: "Software Engineer", skills: "Programming", soft_skills: "Analytical Thinking", domains: "Technology", description: "A professional who designs, develops, tests, and maintains software applications. They are skilled in coding, debugging, and problem-solving to create functional and efficient software." },
+                    { career: "Data Scientist", skills: "Statistics", soft_skills: "Analytical Thinking", domains: "Research", description: "An expert in analyzing and interpreting large, complex datasets to extract meaningful insights and trends. They use a combination of statistics, programming, and domain knowledge to solve business problems." },
+                    { career: "Marketing Manager", skills: "Social Media", soft_skills: "Leadership", domains: "Marketing", description: "A professional who oversees and develops marketing campaigns. They are responsible for promoting a company's brand, products, or services to a target audience and leading a team to achieve marketing goals." },
+                    { career: "Mechanical Engineer", skills: "Mechanical Design", soft_skills: "Problem Solving", domains: "Engineering", description: "A professional who designs, analyzes, manufactures, and maintains mechanical systems. They apply principles of physics and materials science to create innovative solutions and products." },
+                    { career: "Technical Writer", skills: "Writing Skills", soft_skills: "Attention to Detail", domains: "Technology", description: "A professional who creates clear and concise technical documentation, such as user manuals, how-to guides, and reference materials for software products or technical systems." },
+                    { career: "Nurse", skills: "Medical Knowledge", soft_skills: "Patience", domains: "Healthcare", description: "A healthcare professional who provides patient care, administers medication, and educates patients and their families about various health conditions. They are compassionate and detail-oriented." },
+                    { career: "Project Manager", skills: "Project Management", soft_skills: "Leadership", domains: "Technology", description: "A professional who plans, executes, and oversees projects from start to finish. They ensure projects are completed on time and within budget, managing resources and team collaboration." },
+                    { career: "Graphic Designer", skills: "Creativity", soft_skills: "Attention to Detail", domains: "Design", description: "A professional who creates visual concepts, by hand or using computer software, to communicate ideas that inspire, inform, and captivate consumers. They work on logos, websites, advertisements, and more." },
+                    { career: "Teacher", skills: "Writing Skills", soft_skills: "Empathy", domains: "Education", description: "An educator who facilitates learning and helps students acquire knowledge, skills, and values. They develop curriculum, provide instruction, and assess student performance." },
+                    { career: "Accountant", skills: "Statistics", soft_skills: "Attention to Detail", domains: "Finance", description: "A professional who manages financial records for individuals or organizations. They are responsible for preparing and analyzing financial reports, and ensuring compliance with financial regulations." },
+                    { career: "Sales Representative", skills: "Sales Communication", soft_skills: "Persuasion", domains: "Marketing", description: "A professional who is responsible for selling products or services to customers. They build relationships, understand customer needs, and negotiate to close sales." }
+                ];
+
+                const questions = {
+                    "Technical Skills": {
+                        options: ['Programming', 'Mechanical Design', 'Statistics', 'Writing Skills', 'Medical Knowledge', 'Project Management', 'Social Media', 'Creativity'],
+                    },
+                    "Soft Skills": {
+                        options: ['Teamwork', 'Attention to Detail', 'Patience', 'Empathy', 'Leadership', 'Analytical Thinking', 'Sales Communication'],
+                    },
+                    "Domain Interests": {
+                        options: ['Technology', 'Design', 'Education', 'Healthcare', 'Marketing', 'Engineering', 'Research'],
+                    },
+                    "Motivations": {
+                        options: ['Problem Solving', 'Helping Others', 'Creative Expression', 'Data Analysis', 'Leading Projects', 'Storytelling', 'Sales and Influence'],
+                    }
+                };
+
+                // Handles updating the state when a checkbox is clicked
+                const handleCheckboxChange = (category, option) => {
+                    setSelectedOptions(prev => {
+                        const currentSelections = prev[category];
+                        if (currentSelections.includes(option)) {
+                            return {
+                                ...prev,
+                                [category]: currentSelections.filter(item => item !== option),
+                            };
+                        } else {
+                            return {
+                                ...prev,
+                                [category]: [...currentSelections, option],
+                            };
+                        }
+                    });
+                };
+
+                // Logic to find the best career recommendation
+                const getRecommendation = () => {
+                    const allCategoriesAnswered = Object.values(selectedOptions).every(arr => arr.length > 0);
+                    if (!allCategoriesAnswered) {
+                        setShowWarning(true);
+                        setRecommendation(null);
+                        return;
+                    }
+                    setShowWarning(false);
+
+                    const scoreMap = {};
+                    const weightMap = {
+                        'skills': 3,
+                        'soft_skills': 2,
+                        'domains': 2
+                    };
+
+                    careerData.forEach(career => {
+                        let score = 0;
+                        const careerSkills = new Set(career.skills.split(',').map(s => s.trim().toLowerCase()));
+                        const careerSoftSkills = new Set(career.soft_skills.split(',').map(s => s.trim().toLowerCase()));
+                        const careerDomains = new Set(career.domains.split(',').map(s => s.trim().toLowerCase()));
+
+                        const ansSkills = new Set(selectedOptions["Technical Skills"].map(s => s.toLowerCase()));
+                        const ansSoft = new Set(selectedOptions["Soft Skills"].map(s => s.toLowerCase()));
+                        const ansDomains = new Set(selectedOptions["Domain Interests"].map(s => s.toLowerCase()));
+
+                        const skillIntersection = new Set([...ansSkills].filter(x => careerSkills.has(x)));
+                        const softSkillIntersection = new Set([...ansSoft].filter(x => careerSoftSkills.has(x)));
+                        const domainIntersection = new Set([...ansDomains].filter(x => careerDomains.has(x)));
+
+                        score += skillIntersection.size * weightMap['skills'];
+                        score += softSkillIntersection.size * weightMap['soft_skills'];
+                        score += domainIntersection.size * weightMap['domains'];
+
+                        scoreMap[career.career] = score;
+                    });
+
+                    let bestCareer = null;
+                    let highestScore = -1;
+                    for (const career in scoreMap) {
+                        if (scoreMap[career] > highestScore) {
+                            highestScore = scoreMap[career];
+                            bestCareer = career;
+                        }
+                    }
+
+                    const recommendedCareer = careerData.find(c => c.career === bestCareer);
+                    setRecommendation(recommendedCareer);
+                };
+
+                return (
+                    createElement('div', { className: 'min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-8 flex justify-center items-center' },
+                        createElement('div', { className: 'w-full max-w-4xl bg-gray-800 rounded-3xl shadow-2xl my-8 p-6 md:p-12 border border-gray-700' },
+                            createElement('header', { className: 'text-center mb-12' },
+                                createElement('h1', { className: 'text-3xl md:text-5xl font-extrabold text-blue-500 mb-2' }, 'Find Your Path'),
+                                createElement('p', { className: 'text-gray-400 text-lg' }, 'Select the skills and interests that best describe you to get a personalized career recommendation.')
+                            ),
+                            showWarning && (
+                                createElement('div', { className: 'bg-yellow-900 border-l-4 border-yellow-500 text-yellow-300 p-4 rounded-lg mb-6 animate-pulse', role: 'alert' },
+                                    createElement('p', { className: 'font-bold' }, 'Oops!'),
+                                    createElement('p', null, 'Please select at least one option from every category to get your recommendation.')
+                                )
+                            ),
+                            createElement('div', { className: 'space-y-10' },
+                                Object.entries(questions).map(([category, { options }]) => (
+                                    createElement('div', { key: category },
+                                        createElement('h2', { className: 'text-xl md:text-2xl font-bold text-gray-300 mb-4 flex items-center' },
+                                            createElement('span', { className: 'mr-2 text-blue-400' }, '💡'),
+                                            category
+                                        ),
+                                        createElement('div', { className: 'flex flex-wrap gap-3' },
+                                            options.map(option => (
+                                                createElement('label', { key: option, className: 'inline-flex items-center' },
+                                                    createElement('input', {
+                                                        type: 'checkbox',
+                                                        className: 'hidden',
+                                                        checked: selectedOptions[category].includes(option),
+                                                        onChange: () => handleCheckboxChange(category, option),
+                                                    }),
+                                                    createElement('div', { className: 'checkbox-label transition-all duration-200 hover:shadow-lg bg-gray-700 text-gray-300 rounded-full px-4 py-2 hover:bg-gray-600 cursor-pointer' },
+                                                        createElement('span', { className: 'ml-2 text-sm md:text-base font-medium' }, option)
+                                                    )
+                                                )
+                                            ))
+                                        )
+                                    )
+                                ))
+                            ),
+                            createElement('button', {
+                                onClick: getRecommendation,
+                                className: 'w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold py-4 px-6 rounded-lg mt-10 hover:shadow-lg hover:from-blue-700 hover:to-blue-800 transition duration-300 transform hover:-translate-y-1'
+                            }, 'Get My Career Recommendation'),
+                            recommendation && (
+                                createElement('div', { className: 'mt-10 p-8 bg-gray-700 rounded-lg shadow-xl border border-blue-400 animate-fadeIn' },
+                                    createElement('h3', { className: 'text-2xl md:text-4xl font-extrabold text-blue-300 mb-4' },
+                                        createElement('span', { className: 'mr-2' }, '🚀'),
+                                        recommendation.career
+                                    ),
+                                    createElement('p', { className: 'text-gray-400 leading-relaxed' }, recommendation.description)
+                                )
+                            )
+                        )
+                    )
+                );
+            };
+
+            const container = document.getElementById('root');
+            const root = createRoot(container);
+            root.render(createElement(App));
+        });
+    </script>
+</body>
+</html>
