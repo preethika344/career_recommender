@@ -3,218 +3,485 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Career Recommendation App</title>
-    <!-- We'll load all our dependencies here to make sure they're ready -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <title>Find Your Path: Career Recommendation</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-chartjs-2@5.2.0/dist/index.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
     <style>
-        /* Custom styles for the checkbox-label to give it a button-like appearance */
-        .checkbox-label {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        /* Style for when the checkbox is checked */
-        input[type="checkbox"]:checked + .checkbox-label {
-            background-color: #3b82f6; /* A shade of blue */
-            color: white;
-            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
-            transform: scale(1.05);
-        }
-
-        /* Simple animation for the recommendation box */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+      body {
+          font-family: 'Inter', sans-serif;
+          background-color: #1a202c;
+          color: #e2e8f0;
+          height: 100vh;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+          background: #2d3748;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #4a5568;
+          border-radius: 10px;
+          border: 2px solid #2d3748;
+      }
     </style>
 </head>
-<body class="bg-gray-900">
+<body>
     <div id="root"></div>
 
-    <script>
-        // Use a simple load event listener to ensure all external scripts are loaded
-        window.addEventListener('load', () => {
-            const { createElement, useState } = React;
-            const { createRoot } = ReactDOM;
+    <script type="text/babel">
+        // Root component for the entire application.
+        const App = () => {
+            // State for storing user selections
+            const [selections, setSelections] = React.useState({
+                technical: [],
+                soft: [],
+                domain: [],
+                motivation: []
+            });
+            // State for the recommendation results
+            const [recommendation, setRecommendation] = React.useState(null);
+            // State for the AI-generated career description
+            const [careerDescription, setCareerDescription] = React.useState('');
+            // State for chat history
+            const [chatHistory, setChatHistory] = React.useState([]);
+            // State for the current chat message input
+            const [chatInput, setChatInput] = React.useState('');
+            // State for loading indicators
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [isChatLoading, setIsChatLoading] = React.useState(false);
 
-            // This is the main application component using React hooks
-            const App = () => {
-                // State to hold the selected options
-                const [selectedOptions, setSelectedOptions] = useState({
-                    'Technical Skills': [],
-                    'Soft Skills': [],
-                    'Domain Interests': [],
-                    'Motivations': [],
-                });
-                // State to store the recommendation result
-                const [recommendation, setRecommendation] = useState(null);
-                // State for the warning message
-                const [showWarning, setShowWarning] = useState(false);
+            // Ref for the chat messages container to enable auto-scrolling
+            const chatMessagesRef = React.useRef(null);
 
-                // Hardcoded data for careers and their associated traits
-                const careerData = [
-                    { career: "Software Engineer", skills: "Programming", soft_skills: "Analytical Thinking", domains: "Technology", description: "A professional who designs, develops, tests, and maintains software applications. They are skilled in coding, debugging, and problem-solving to create functional and efficient software." },
-                    { career: "Data Scientist", skills: "Statistics", soft_skills: "Analytical Thinking", domains: "Research", description: "An expert in analyzing and interpreting large, complex datasets to extract meaningful insights and trends. They use a combination of statistics, programming, and domain knowledge to solve business problems." },
-                    { career: "Marketing Manager", skills: "Social Media", soft_skills: "Leadership", domains: "Marketing", description: "A professional who oversees and develops marketing campaigns. They are responsible for promoting a company's brand, products, or services to a target audience and leading a team to achieve marketing goals." },
-                    { career: "Mechanical Engineer", skills: "Mechanical Design", soft_skills: "Problem Solving", domains: "Engineering", description: "A professional who designs, analyzes, manufactures, and maintains mechanical systems. They apply principles of physics and materials science to create innovative solutions and products." },
-                    { career: "Technical Writer", skills: "Writing Skills", soft_skills: "Attention to Detail", domains: "Technology", description: "A professional who creates clear and concise technical documentation, such as user manuals, how-to guides, and reference materials for software products or technical systems." },
-                    { career: "Nurse", skills: "Medical Knowledge", soft_skills: "Patience", domains: "Healthcare", description: "A healthcare professional who provides patient care, administers medication, and educates patients and their families about various health conditions. They are compassionate and detail-oriented." },
-                    { career: "Project Manager", skills: "Project Management", soft_skills: "Leadership", domains: "Technology", description: "A professional who plans, executes, and oversees projects from start to finish. They ensure projects are completed on time and within budget, managing resources and team collaboration." },
-                    { career: "Graphic Designer", skills: "Creativity", soft_skills: "Attention to Detail", domains: "Design", description: "A professional who creates visual concepts, by hand or using computer software, to communicate ideas that inspire, inform, and captivate consumers. They work on logos, websites, advertisements, and more." },
-                    { career: "Teacher", skills: "Writing Skills", soft_skills: "Empathy", domains: "Education", description: "An educator who facilitates learning and helps students acquire knowledge, skills, and values. They develop curriculum, provide instruction, and assess student performance." },
-                    { career: "Accountant", skills: "Statistics", soft_skills: "Attention to Detail", domains: "Finance", description: "A professional who manages financial records for individuals or organizations. They are responsible for preparing and analyzing financial reports, and ensuring compliance with financial regulations." },
-                    { career: "Sales Representative", skills: "Sales Communication", soft_skills: "Persuasion", domains: "Marketing", description: "A professional who is responsible for selling products or services to customers. They build relationships, understand customer needs, and negotiate to close sales." }
-                ];
-
-                const questions = {
-                    "Technical Skills": {
-                        options: ['Programming', 'Mechanical Design', 'Statistics', 'Writing Skills', 'Medical Knowledge', 'Project Management', 'Social Media', 'Creativity'],
-                    },
-                    "Soft Skills": {
-                        options: ['Teamwork', 'Attention to Detail', 'Patience', 'Empathy', 'Leadership', 'Analytical Thinking', 'Sales Communication'],
-                    },
-                    "Domain Interests": {
-                        options: ['Technology', 'Design', 'Education', 'Healthcare', 'Marketing', 'Engineering', 'Research'],
-                    },
-                    "Motivations": {
-                        options: ['Problem Solving', 'Helping Others', 'Creative Expression', 'Data Analysis', 'Leading Projects', 'Storytelling', 'Sales and Influence'],
-                    }
-                };
-
-                // Handles updating the state when a checkbox is clicked
-                const handleCheckboxChange = (category, option) => {
-                    setSelectedOptions(prev => {
-                        const currentSelections = prev[category];
-                        if (currentSelections.includes(option)) {
-                            return {
-                                ...prev,
-                                [category]: currentSelections.filter(item => item !== option),
-                            };
-                        } else {
-                            return {
-                                ...prev,
-                                [category]: [...currentSelections, option],
-                            };
-                        }
-                    });
-                };
-
-                // Logic to find the best career recommendation
-                const getRecommendation = () => {
-                    const allCategoriesAnswered = Object.values(selectedOptions).every(arr => arr.length > 0);
-                    if (!allCategoriesAnswered) {
-                        setShowWarning(true);
-                        setRecommendation(null);
-                        return;
-                    }
-                    setShowWarning(false);
-
-                    const scoreMap = {};
-                    const weightMap = {
-                        'skills': 3,
-                        'soft_skills': 2,
-                        'domains': 2
-                    };
-
-                    careerData.forEach(career => {
-                        let score = 0;
-                        const careerSkills = new Set(career.skills.split(',').map(s => s.trim().toLowerCase()));
-                        const careerSoftSkills = new Set(career.soft_skills.split(',').map(s => s.trim().toLowerCase()));
-                        const careerDomains = new Set(career.domains.split(',').map(s => s.trim().toLowerCase()));
-
-                        const ansSkills = new Set(selectedOptions["Technical Skills"].map(s => s.toLowerCase()));
-                        const ansSoft = new Set(selectedOptions["Soft Skills"].map(s => s.toLowerCase()));
-                        const ansDomains = new Set(selectedOptions["Domain Interests"].map(s => s.toLowerCase()));
-
-                        const skillIntersection = new Set([...ansSkills].filter(x => careerSkills.has(x)));
-                        const softSkillIntersection = new Set([...ansSoft].filter(x => careerSoftSkills.has(x)));
-                        const domainIntersection = new Set([...ansDomains].filter(x => careerDomains.has(x)));
-
-                        score += skillIntersection.size * weightMap['skills'];
-                        score += softSkillIntersection.size * weightMap['soft_skills'];
-                        score += domainIntersection.size * weightMap['domains'];
-
-                        scoreMap[career.career] = score;
-                    });
-
-                    let bestCareer = null;
-                    let highestScore = -1;
-                    for (const career in scoreMap) {
-                        if (scoreMap[career] > highestScore) {
-                            highestScore = scoreMap[career];
-                            bestCareer = career;
-                        }
-                    }
-
-                    const recommendedCareer = careerData.find(c => c.career === bestCareer);
-                    setRecommendation(recommendedCareer);
-                };
-
-                return (
-                    createElement('div', { className: 'min-h-screen bg-gray-900 text-gray-200 p-4 sm:p-8 flex justify-center items-center' },
-                        createElement('div', { className: 'w-full max-w-4xl bg-gray-800 rounded-3xl shadow-2xl my-8 p-6 md:p-12 border border-gray-700' },
-                            createElement('header', { className: 'text-center mb-12' },
-                                createElement('h1', { className: 'text-3xl md:text-5xl font-extrabold text-blue-500 mb-2' }, 'Find Your Path'),
-                                createElement('p', { className: 'text-gray-400 text-lg' }, 'Select the skills and interests that best describe you to get a personalized career recommendation.')
-                            ),
-                            showWarning && (
-                                createElement('div', { className: 'bg-yellow-900 border-l-4 border-yellow-500 text-yellow-300 p-4 rounded-lg mb-6 animate-pulse', role: 'alert' },
-                                    createElement('p', { className: 'font-bold' }, 'Oops!'),
-                                    createElement('p', null, 'Please select at least one option from every category to get your recommendation.')
-                                )
-                            ),
-                            createElement('div', { className: 'space-y-10' },
-                                Object.entries(questions).map(([category, { options }]) => (
-                                    createElement('div', { key: category },
-                                        createElement('h2', { className: 'text-xl md:text-2xl font-bold text-gray-300 mb-4 flex items-center' },
-                                            createElement('span', { className: 'mr-2 text-blue-400' }, '💡'),
-                                            category
-                                        ),
-                                        createElement('div', { className: 'flex flex-wrap gap-3' },
-                                            options.map(option => (
-                                                createElement('label', { key: option, className: 'inline-flex items-center' },
-                                                    createElement('input', {
-                                                        type: 'checkbox',
-                                                        className: 'hidden',
-                                                        checked: selectedOptions[category].includes(option),
-                                                        onChange: () => handleCheckboxChange(category, option),
-                                                    }),
-                                                    createElement('div', { className: 'checkbox-label transition-all duration-200 hover:shadow-lg bg-gray-700 text-gray-300 rounded-full px-4 py-2 hover:bg-gray-600 cursor-pointer' },
-                                                        createElement('span', { className: 'ml-2 text-sm md:text-base font-medium' }, option)
-                                                    )
-                                                )
-                                            ))
-                                        )
-                                    )
-                                ))
-                            ),
-                            createElement('button', {
-                                onClick: getRecommendation,
-                                className: 'w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold py-4 px-6 rounded-lg mt-10 hover:shadow-lg hover:from-blue-700 hover:to-blue-800 transition duration-300 transform hover:-translate-y-1'
-                            }, 'Get My Career Recommendation'),
-                            recommendation && (
-                                createElement('div', { className: 'mt-10 p-8 bg-gray-700 rounded-lg shadow-xl border border-blue-400 animate-fadeIn' },
-                                    createElement('h3', { className: 'text-2xl md:text-4xl font-extrabold text-blue-300 mb-4' },
-                                        createElement('span', { className: 'mr-2' }, '🚀'),
-                                        recommendation.career
-                                    ),
-                                    createElement('p', { className: 'text-gray-400 leading-relaxed' }, recommendation.description)
-                                )
-                            )
-                        )
-                    )
-                );
+            // Options for the questionnaire
+            const options = {
+                technical: ['Programming', 'Mechanical Design', 'Statistics', 'Writing Skills', 'Medical Knowledge', 'Project Management', 'Social Media', 'Creativity'],
+                soft: ['Teamwork', 'Attention to Detail', 'Patience', 'Empathy', 'Leadership', 'Analytical Thinking', 'Sales Communication'],
+                domain: ['Technology', 'Healthcare', 'Finance', 'Education', 'Marketing', 'Creative Arts', 'Science', 'Law', 'Engineering'],
+                motivation: ['High Salary', 'Work-Life Balance', 'Social Impact', 'Continuous Learning', 'Creative Expression', 'Status & Recognition', 'Job Security']
             };
 
-            const container = document.getElementById('root');
-            const root = createRoot(container);
-            root.render(createElement(App));
-        });
+            // Career options with their corresponding skills, interests, and motivations
+            const careerData = {
+                'Software Engineer': {
+                    technical: ['Programming', 'Project Management'],
+                    soft: ['Analytical Thinking', 'Teamwork', 'Attention to Detail'],
+                    domain: ['Technology'],
+                    motivation: ['High Salary', 'Continuous Learning']
+                },
+                'Data Scientist': {
+                    technical: ['Programming', 'Statistics'],
+                    soft: ['Analytical Thinking', 'Attention to Detail'],
+                    domain: ['Technology', 'Science'],
+                    motivation: ['Continuous Learning', 'High Salary']
+                },
+                'Mechanical Engineer': {
+                    technical: ['Mechanical Design', 'Project Management'],
+                    soft: ['Attention to Detail', 'Teamwork'],
+                    domain: ['Engineering'],
+                    motivation: ['Job Security', 'High Salary']
+                },
+                'Content Writer': {
+                    technical: ['Writing Skills', 'Social Media', 'Creativity'],
+                    soft: ['Patience', 'Empathy'],
+                    domain: ['Marketing', 'Creative Arts'],
+                    motivation: ['Creative Expression', 'Work-Life Balance']
+                },
+                'Medical Doctor': {
+                    technical: ['Medical Knowledge'],
+                    soft: ['Empathy', 'Patience', 'Leadership'],
+                    domain: ['Healthcare'],
+                    motivation: ['Social Impact', 'Status & Recognition']
+                },
+                'Financial Analyst': {
+                    technical: ['Statistics', 'Project Management'],
+                    soft: ['Analytical Thinking', 'Attention to Detail'],
+                    domain: ['Finance'],
+                    motivation: ['High Salary', 'Job Security']
+                },
+                'Teacher': {
+                    technical: ['Writing Skills'],
+                    soft: ['Patience', 'Empathy', 'Leadership'],
+                    domain: ['Education'],
+                    motivation: ['Social Impact', 'Work-Life Balance']
+                },
+                'Marketing Manager': {
+                    technical: ['Social Media', 'Creativity', 'Project Management'],
+                    soft: ['Sales Communication', 'Leadership'],
+                    domain: ['Marketing'],
+                    motivation: ['Creative Expression', 'High Salary']
+                },
+                'Lawyer': {
+                    technical: ['Writing Skills'],
+                    soft: ['Analytical Thinking', 'Sales Communication'],
+                    domain: ['Law'],
+                    motivation: ['Status & Recognition', 'High Salary']
+                },
+            };
+
+            // Handles user selection of options.
+            const handleSelect = (category, item) => {
+                setSelections(prev => {
+                    const currentSelection = prev[category];
+                    if (currentSelection.includes(item)) {
+                        return { ...prev, [category]: currentSelection.filter(i => i !== item) };
+                    } else {
+                        return { ...prev, [category]: [...currentSelection, item] };
+                    }
+                });
+            };
+
+            // Scrolls the chat messages to the bottom.
+            const scrollToBottom = () => {
+                if (chatMessagesRef.current) {
+                    chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+                }
+            };
+
+            React.useEffect(() => {
+                scrollToBottom();
+            }, [chatHistory]);
+
+            // Handles the submission of the career recommendation form.
+            const handleSubmit = async () => {
+                // Validate that at least one option from each category is selected
+                if (
+                    selections.technical.length === 0 ||
+                    selections.soft.length === 0 ||
+                    selections.domain.length === 0 ||
+                    selections.motivation.length === 0
+                ) {
+                    alert('Please select at least one option from each category.');
+                    return;
+                }
+                
+                setIsLoading(true);
+                setCareerDescription('');
+                setChatHistory([]);
+                setRecommendation(null);
+
+                const scores = {};
+                
+                // Calculate match scores for each career
+                Object.keys(careerData).forEach(career => {
+                    scores[career] = 0;
+                    const careerSkills = careerData[career];
+                    
+                    ['technical', 'soft', 'domain', 'motivation'].forEach(category => {
+                        selections[category].forEach(selection => {
+                            if (careerSkills[category].includes(selection)) {
+                                scores[career]++;
+                            }
+                        });
+                    });
+                });
+
+                // Sort careers by score
+                const sortedCareers = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
+                const topCareer = sortedCareers[0];
+                const topFive = sortedCareers.slice(0, 5);
+                const chartData = {
+                    labels: topFive,
+                    datasets: [{
+                        label: 'Match Score',
+                        data: topFive.map(c => scores[c]),
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                    }]
+                };
+
+                setRecommendation({ topCareer, topFive, scores, chartData });
+
+                // Generate a detailed description for the top career using the Gemini API
+                const prompt = `Write a detailed, engaging, and professional career description for a ${topCareer} that highlights the typical responsibilities, required skills, and growth opportunities. The description should be compelling and informative, about 300 words.`;
+                try {
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+
+                    let response;
+                    let retries = 0;
+                    const maxRetries = 3;
+
+                    while (retries < maxRetries) {
+                        try {
+                            response = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+
+                            if (response.status === 429) {
+                                // Exponential backoff for rate limiting
+                                const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
+                                console.log(`Rate limit exceeded. Retrying in ${delay / 1000}s...`);
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                                retries++;
+                            } else {
+                                break; // Exit loop on successful response
+                            }
+                        } catch (error) {
+                            console.error('Fetch error:', error);
+                            break; // Exit loop on other errors
+                        }
+                    }
+
+                    if (response && response.ok) {
+                        const result = await response.json();
+                        const description = result.candidates[0].content.parts[0].text;
+                        setCareerDescription(description);
+                    } else {
+                        setCareerDescription('Failed to generate career description. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('API call failed:', error);
+                    setCareerDescription('An error occurred. Please try again later.');
+                }
+                setIsLoading(false);
+            };
+
+            // Handles sending a message to the AI chatbot.
+            const handleSendMessage = async (e) => {
+                e.preventDefault();
+                if (chatInput.trim() === '' || isChatLoading) return;
+
+                const userMessage = { role: 'user', parts: [{ text: chatInput }] };
+                const newChatHistory = [...chatHistory, userMessage];
+                setChatHistory(newChatHistory);
+                setChatInput('');
+                setIsChatLoading(true);
+
+                const fullPrompt = `You are a helpful career counselor. Based on the fact that the user's recommended career is ${recommendation.topCareer}, provide a helpful response to the user's question: "${chatInput}"`;
+
+                try {
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                    const payload = { contents: [{ role: "user", parts: [{ text: fullPrompt }] }] };
+                    
+                    let response;
+                    let retries = 0;
+                    const maxRetries = 3;
+
+                    while (retries < maxRetries) {
+                        try {
+                            response = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+
+                            if (response.status === 429) {
+                                // Exponential backoff
+                                const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
+                                console.log(`Rate limit exceeded. Retrying in ${delay / 1000}s...`);
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                                retries++;
+                            } else {
+                                break;
+                            }
+                        } catch (error) {
+                            console.error('Fetch error:', error);
+                            break;
+                        }
+                    }
+
+                    if (response && response.ok) {
+                        const result = await response.json();
+                        const botMessageText = result.candidates[0].content.parts[0].text;
+                        const botMessage = { role: 'model', parts: [{ text: botMessageText }] };
+                        setChatHistory(prev => [...prev, botMessage]);
+                    } else {
+                        const botMessage = { role: 'model', parts: [{ text: 'Sorry, I am unable to provide a response at this time. Please try again.' }] };
+                        setChatHistory(prev => [...prev, botMessage]);
+                    }
+                } catch (error) {
+                    console.error('API call failed:', error);
+                    const botMessage = { role: 'model', parts: [{ text: 'An error occurred. Please try again later.' }] };
+                    setChatHistory(prev => [...prev, botMessage]);
+                }
+                setIsChatLoading(false);
+            };
+
+            return (
+                <div className="min-h-screen p-4 flex flex-col items-center">
+                    <header className="text-center mb-8">
+                        <h1 className="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-600 mb-2">
+                            Find Your Path
+                        </h1>
+                        <p className="text-lg text-gray-400 max-w-2xl">
+                            Select the skills and interests that best describe you to get a personalized career recommendation.
+                        </p>
+                    </header>
+
+                    {/* Main Questionnaire Section */}
+                    <div className="w-full max-w-4xl bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700 mb-8">
+                        {Object.keys(options).map(category => (
+                            <div key={category} className="mb-6">
+                                <h2 className="text-2xl font-semibold mb-3 capitalize flex items-center">
+                                    <span className="mr-2 text-blue-400">
+                                        {category === 'technical' && '💡'}
+                                        {category === 'soft' && '🤝'}
+                                        {category === 'domain' && '🌐'}
+                                        {category === 'motivation' && '�'}
+                                    </span>
+                                    {category} Skills
+                                </h2>
+                                <div className="flex flex-wrap gap-2">
+                                    {options[category].map(item => (
+                                        <button
+                                            key={item}
+                                            onClick={() => handleSelect(category, item)}
+                                            className={`
+                                                px-4 py-2 rounded-full font-medium transition-colors
+                                                ${selections[category].includes(item)
+                                                    ? 'bg-blue-600 text-white shadow-lg'
+                                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                                }
+                                            `}
+                                        >
+                                            {item}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        className="w-full max-w-xs py-3 rounded-full bg-indigo-600 text-white font-semibold text-lg shadow-xl hover:bg-indigo-500 transition-colors disabled:bg-gray-600 mb-8"
+                    >
+                        {isLoading ? (
+                            <div className="flex justify-center items-center space-x-2">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Generating...</span>
+                            </div>
+                        ) : (
+                            'Get My Career Recommendation'
+                        )}
+                    </button>
+
+                    {/* Recommendation Results and Chatbot Section */}
+                    {recommendation && (
+                        <div className="w-full max-w-4xl bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700 mb-8 flex flex-col md:flex-row gap-8">
+                            {/* Results & Description */}
+                            <div className="flex-1">
+                                <h2 className="text-3xl font-bold text-center mb-4 text-blue-400">Your Path Found!</h2>
+                                <div className="text-center mb-6">
+                                    <p className="text-lg text-gray-400">Your top recommended career is:</p>
+                                    <p className="text-4xl font-extrabold text-white">{recommendation.topCareer}</p>
+                                </div>
+                                <div className="p-4 bg-gray-900 rounded-xl mb-6 shadow-inner">
+                                    <h3 className="text-xl font-semibold mb-2 text-white">Career Insights</h3>
+                                    {careerDescription ? (
+                                        <p className="text-gray-300 leading-relaxed text-sm whitespace-pre-wrap">{careerDescription}</p>
+                                    ) : (
+                                        <div className="flex justify-center items-center space-x-2 text-gray-400">
+                                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                                            <span>Generating insights...</span>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="p-4 bg-gray-900 rounded-xl shadow-inner">
+                                    <h3 className="text-xl font-semibold mb-2 text-white">Top 5 Career Matches</h3>
+                                    <div className="h-64">
+                                        <Bar data={recommendation.chartData} options={{
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            scales: {
+                                                x: {
+                                                    ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                                                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                                },
+                                                y: {
+                                                    ticks: { color: 'rgba(255, 255, 255, 0.7)' },
+                                                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                                }
+                                            },
+                                            plugins: {
+                                                legend: { display: false },
+                                                tooltip: {
+                                                    backgroundColor: 'rgba(45, 55, 72, 0.9)',
+                                                    titleColor: '#e2e8f0',
+                                                    bodyColor: '#cbd5e1'
+                                                }
+                                            }
+                                        }} />
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Chatbot Section */}
+                            <div className="flex-1 flex flex-col bg-gray-900 p-4 rounded-xl shadow-inner border border-gray-800">
+                                <h3 className="text-xl font-semibold mb-4 text-white text-center">Chat with Your Career Counselor</h3>
+                                <div ref={chatMessagesRef} className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4 mb-4">
+                                    {chatHistory.length > 0 ? (
+                                        chatHistory.map((msg, index) => (
+                                            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                <div className={`
+                                                    max-w-[80%] p-3 rounded-2xl
+                                                    ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-100 rounded-bl-none'}
+                                                `}>
+                                                    {msg.parts[0].text}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="flex justify-center items-center h-full text-gray-500 italic">
+                                            How can I help you with your career?
+                                        </div>
+                                    )}
+                                    {isChatLoading && (
+                                        <div className="flex justify-start">
+                                            <div className="max-w-[80%] p-3 rounded-2xl bg-gray-700 text-gray-100 rounded-bl-none">
+                                                <div className="flex items-center space-x-2">
+                                                    <div className="w-3 h-3 bg-gray-400 rounded-full animate-pulse-200"></div>
+                                                    <div className="w-3 h-3 bg-gray-400 rounded-full animate-pulse-400"></div>
+                                                    <div className="w-3 h-3 bg-gray-400 rounded-full animate-pulse-600"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <form onSubmit={handleSendMessage} className="flex space-x-2">
+                                    <input
+                                        type="text"
+                                        value={chatInput}
+                                        onChange={(e) => setChatInput(e.target.value)}
+                                        placeholder="Ask a question..."
+                                        className="flex-1 p-3 rounded-full bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        disabled={!recommendation || isChatLoading}
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-3 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-colors disabled:bg-gray-600"
+                                        disabled={!recommendation || isChatLoading}
+                                    >
+                                        Send
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const { Bar } = window['react-chartjs-2'];
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
     </script>
 </body>
 </html>
+�
